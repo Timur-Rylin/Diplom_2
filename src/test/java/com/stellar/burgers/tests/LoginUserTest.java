@@ -1,130 +1,100 @@
 package com.stellar.burgers.tests;
 
 import com.stellar.burgers.Constants;
+import com.stellar.burgers.api.BaseTest;
+import com.stellar.burgers.api.models.User;
+import com.stellar.burgers.api.models.LoginResponse;
+import com.stellar.burgers.api.models.ApiResponse;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.http.ContentType;
 import org.junit.Test;
 
-import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 @DisplayName("Тесты входа пользователя")
-public class LoginUserTest {
+public class LoginUserTest extends BaseTest {
 
     @Test
     @DisplayName("Успешный вход существующего пользователя")
     @Description("Позитивный тест: вход с корректными учетными данными")
     public void loginExistingUserSuccessfully() {
-        String email = "loginuser_" + System.currentTimeMillis() + "@example.com";
-        String requestBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(requestBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT);
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(requestBody)
-                .when()
-                .post(Constants.LOGIN_ENDPOINT)
+        userClient.createUser(testUser)
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK);
+
+        LoginResponse response = userClient.loginUser(testUser)
+                .then()
+                .statusCode(SC_OK)
                 .body("success", equalTo(true))
-                .body("accessToken", not(emptyOrNullString()));
+                .body("accessToken", not(emptyOrNullString()))
+                .body("refreshToken", not(emptyOrNullString()))
+                .body("user.email", equalTo(testUser.getEmail()))
+                .body("user.name", equalTo(testUser.getName()))
+                .extract()
+                .as(LoginResponse.class);
+
+        assertNotNull("Access token should not be null", response.getAccessToken());
+        accessToken = response.getAccessToken();
     }
 
     @Test
     @DisplayName("Вход с неверным паролем")
     @Description("Негативный тест: вход с некорректным паролем")
     public void loginWithWrongPasswordShouldFail() {
-        String email = "wrongpass_" + System.currentTimeMillis() + "@example.com";
-        String registerBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"correct123\",\"name\":\"Test User\"}",
-                email
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(registerBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT);
-
-        String loginBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"wrong_password\"}",
-                email
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(loginBody)
-                .when()
-                .post(Constants.LOGIN_ENDPOINT)
+        userClient.createUser(testUser)
                 .then()
-                .statusCode(401)
+                .statusCode(SC_OK);
+
+        User userWithWrongPassword = new User(testUser.getEmail(), "wrong_password", testUser.getName());
+
+        ApiResponse response = userClient.loginUser(userWithWrongPassword)
+                .then()
+                .statusCode(SC_UNAUTHORIZED)
                 .body("success", equalTo(false))
-                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS));
+                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS))
+                .extract()
+                .as(ApiResponse.class);
+
+        assertEquals("Error message should match", Constants.ERROR_INCORRECT_CREDENTIALS, response.getMessage());
     }
 
     @Test
     @DisplayName("Вход с неверным email")
     @Description("Негативный тест: вход с некорректным email")
     public void loginWithWrongEmailShouldFail() {
-        String email = "wrongemail_" + System.currentTimeMillis() + "@example.com";
-        String registerBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(registerBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT);
-
-        String loginBody = "{\"email\":\"wrong_email@example.com\",\"password\":\"password123\"}";
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(loginBody)
-                .when()
-                .post(Constants.LOGIN_ENDPOINT)
+        userClient.createUser(testUser)
                 .then()
-                .statusCode(401)
+                .statusCode(SC_OK);
+
+        User userWithWrongEmail = new User("wrong_email@example.com", testUser.getPassword(), testUser.getName());
+
+        ApiResponse response = userClient.loginUser(userWithWrongEmail)
+                .then()
+                .statusCode(SC_UNAUTHORIZED)
                 .body("success", equalTo(false))
-                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS));
+                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS))
+                .extract()
+                .as(ApiResponse.class);
+
+        assertEquals("Error message should match", Constants.ERROR_INCORRECT_CREDENTIALS, response.getMessage());
     }
 
     @Test
     @DisplayName("Вход несуществующего пользователя")
     @Description("Негативный тест: вход пользователя, который не был зарегистрирован")
     public void loginNonExistentUserShouldFail() {
-        String email = "nonexistent_" + System.currentTimeMillis() + "@example.com";
-        String loginBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\"}",
-                email
-        );
+        User nonExistentUser = new User("nonexistent@example.com", "password123", "Non Existent");
 
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(loginBody)
-                .when()
-                .post(Constants.LOGIN_ENDPOINT)
+        ApiResponse response = userClient.loginUser(nonExistentUser)
                 .then()
-                .statusCode(401)
+                .statusCode(SC_UNAUTHORIZED)
                 .body("success", equalTo(false))
-                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS));
+                .body("message", equalTo(Constants.ERROR_INCORRECT_CREDENTIALS))
+                .extract()
+                .as(ApiResponse.class);
+
+        assertEquals("Error message should match", Constants.ERROR_INCORRECT_CREDENTIALS, response.getMessage());
     }
 }

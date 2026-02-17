@@ -6,6 +6,8 @@ public class Constants {
     public static final String CREATE_USER_ENDPOINT = "/api/auth/register";
     public static final String LOGIN_ENDPOINT = "/api/auth/login";
     public static final String CREATE_ORDER_ENDPOINT = "/api/orders";
+    public static final String INGREDIENTS_ENDPOINT = "/api/ingredients";
+    public static final String USER_ENDPOINT = "/api/auth/user";
 
     public static final String ERROR_USER_EXISTS = "User already exists";
     public static final String ERROR_REQUIRED_FIELDS = "Email, password and name are required fields";

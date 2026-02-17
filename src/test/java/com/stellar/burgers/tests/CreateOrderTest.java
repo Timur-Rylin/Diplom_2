@@ -1,188 +1,113 @@
 package com.stellar.burgers.tests;
 
 import com.stellar.burgers.Constants;
+import com.stellar.burgers.api.BaseTest;
+import com.stellar.burgers.api.models.Order;
+import com.stellar.burgers.api.models.OrderResponse;
+import com.stellar.burgers.api.models.ApiResponse;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.http.ContentType;
 import org.junit.Test;
 
-import static io.restassured.RestAssured.given;
+import java.util.Arrays;
+import java.util.Collections;
+
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 @DisplayName("Тесты создания заказа")
-public class CreateOrderTest {
+public class CreateOrderTest extends BaseTest {
 
     @Test
     @DisplayName("Создание заказа с авторизацией")
     @Description("Позитивный тест: создание заказа авторизованным пользователем с валидными ингредиентами")
     public void createOrderWithAuthorizationSuccessfully() {
-        String email = "orderuser_" + System.currentTimeMillis() + "@example.com";
-        String userBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
+        registerUser();
 
-        String token = given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(userBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT)
+        Order order = new Order(Arrays.asList(Constants.VALID_INGREDIENTS));
+
+        OrderResponse response = orderClient.createOrder(order, accessToken)
                 .then()
-                .statusCode(200)
-                .extract()
-                .path("accessToken");
-
-        String orderBody = String.format(
-                "{\"ingredients\":[\"%s\",\"%s\"]}",
-                Constants.VALID_INGREDIENTS[0],
-                Constants.VALID_INGREDIENTS[1]
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .header("Authorization", token)
-                .body(orderBody)
-                .when()
-                .post(Constants.CREATE_ORDER_ENDPOINT)
-                .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
                 .body("success", equalTo(true))
-                .body("order.number", greaterThan(0));
+                .body("name", not(emptyOrNullString()))
+                .body("order.number", greaterThan(0))
+                .extract()
+                .as(OrderResponse.class);
+
+        assertTrue("Order should be successful", response.isSuccess());
+        assertNotNull("Order number should be present", response.getOrder());
+        assertTrue("Order number should be positive", response.getOrder().getNumber() > 0);
     }
 
     @Test
     @DisplayName("Создание заказа без авторизации")
     @Description("Негативный тест: создание заказа без токена авторизации")
     public void createOrderWithoutAuthorizationShouldFail() {
-        String orderBody = String.format(
-                "{\"ingredients\":[\"%s\",\"%s\"]}",
-                Constants.VALID_INGREDIENTS[0],
-                Constants.VALID_INGREDIENTS[1]
-        );
+        Order order = new Order(Arrays.asList(Constants.VALID_INGREDIENTS));
 
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(orderBody)
-                .when()
-                .post(Constants.CREATE_ORDER_ENDPOINT)
+        ApiResponse response = orderClient.createOrderWithoutAuth(order)
                 .then()
-                .statusCode(401)
+                .statusCode(SC_UNAUTHORIZED)
                 .body("success", equalTo(false))
-                .body("message", equalTo(Constants.ERROR_NOT_AUTHORIZED));
+                .body("message", equalTo(Constants.ERROR_NOT_AUTHORIZED))
+                .extract()
+                .as(ApiResponse.class);
+
+        assertFalse("Response should indicate failure", response.isSuccess());
+        assertEquals("Error message should match", Constants.ERROR_NOT_AUTHORIZED, response.getMessage());
     }
 
     @Test
     @DisplayName("Создание заказа с ингредиентами")
     @Description("Позитивный тест: создание заказа с валидными ингредиентами")
     public void createOrderWithIngredientsSuccessfully() {
-        String email = "orderuser2_" + System.currentTimeMillis() + "@example.com";
-        String userBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
+        registerUser();
 
-        String token = given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(userBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT)
+        Order order = new Order(Arrays.asList(Constants.VALID_INGREDIENTS));
+
+        OrderResponse response = orderClient.createOrder(order, accessToken)
                 .then()
-                .statusCode(200)
+                .statusCode(SC_OK)
+                .body("success", equalTo(true))
+                .body("order", notNullValue())
                 .extract()
-                .path("accessToken");
+                .as(OrderResponse.class);
 
-        String orderBody = String.format(
-                "{\"ingredients\":[\"%s\",\"%s\"]}",
-                Constants.VALID_INGREDIENTS[0],
-                Constants.VALID_INGREDIENTS[1]
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .header("Authorization", token)
-                .body(orderBody)
-                .when()
-                .post(Constants.CREATE_ORDER_ENDPOINT)
-                .then()
-                .statusCode(200)
-                .body("success", equalTo(true));
+        assertTrue("Order should be successful", response.isSuccess());
     }
 
     @Test
     @DisplayName("Создание заказа без ингредиентов")
     @Description("Негативный тест: создание заказа с пустым списком ингредиентов")
     public void createOrderWithoutIngredientsShouldFail() {
-        String email = "orderuser3_" + System.currentTimeMillis() + "@example.com";
-        String userBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
+        registerUser();
 
-        String token = given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(userBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT)
+        Order emptyOrder = new Order(Collections.emptyList());
+
+        ApiResponse response = orderClient.createOrder(emptyOrder, accessToken)
                 .then()
-                .statusCode(200)
-                .extract()
-                .path("accessToken");
-
-        String orderBody = "{\"ingredients\":[]}";
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .header("Authorization", token)
-                .body(orderBody)
-                .when()
-                .post(Constants.CREATE_ORDER_ENDPOINT)
-                .then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
                 .body("success", equalTo(false))
-                .body("message", equalTo(Constants.ERROR_NO_INGREDIENTS));
+                .body("message", equalTo(Constants.ERROR_NO_INGREDIENTS))
+                .extract()
+                .as(ApiResponse.class);
+
+        assertFalse("Response should indicate failure", response.isSuccess());
+        assertEquals("Error message should match", Constants.ERROR_NO_INGREDIENTS, response.getMessage());
     }
 
     @Test
     @DisplayName("Создание заказа с неверным хешем ингредиентов")
     @Description("Негативный тест: создание заказа с невалидными ID ингредиентов")
     public void createOrderWithInvalidIngredientHashShouldFail() {
-        String email = "orderuser4_" + System.currentTimeMillis() + "@example.com";
-        String userBody = String.format(
-                "{\"email\":\"%s\",\"password\":\"password123\",\"name\":\"Test User\"}",
-                email
-        );
+        registerUser();
 
-        String token = given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .body(userBody)
-                .when()
-                .post(Constants.CREATE_USER_ENDPOINT)
+        Order invalidOrder = new Order(Arrays.asList(Constants.INVALID_INGREDIENT_HASH, "another_invalid_hash"));
+
+        orderClient.createOrder(invalidOrder, accessToken)
                 .then()
-                .statusCode(200)
-                .extract()
-                .path("accessToken");
-
-        String orderBody = String.format(
-                "{\"ingredients\":[\"%s\",\"another_invalid_hash\"]}",
-                Constants.INVALID_INGREDIENT_HASH
-        );
-
-        given()
-                .baseUri(Constants.BASE_URL)
-                .contentType(ContentType.JSON)
-                .header("Authorization", token)
-                .body(orderBody)
-                .when()
-                .post(Constants.CREATE_ORDER_ENDPOINT)
-                .then()
-                .statusCode(500);
+                .statusCode(SC_INTERNAL_SERVER_ERROR);
     }
 }

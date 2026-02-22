@@ -23,8 +23,6 @@ public class CreateOrderTest extends BaseTest {
     @DisplayName("Создание заказа с авторизацией")
     @Description("Позитивный тест: создание заказа авторизованным пользователем с валидными ингредиентами")
     public void createOrderWithAuthorizationSuccessfully() {
-        registerUser();
-
         Order order = new Order(Arrays.asList(Constants.VALID_INGREDIENTS));
 
         OrderResponse response = orderClient.createOrder(order, accessToken)
@@ -63,8 +61,6 @@ public class CreateOrderTest extends BaseTest {
     @DisplayName("Создание заказа с ингредиентами")
     @Description("Позитивный тест: создание заказа с валидными ингредиентами")
     public void createOrderWithIngredientsSuccessfully() {
-        registerUser();
-
         Order order = new Order(Arrays.asList(Constants.VALID_INGREDIENTS));
 
         OrderResponse response = orderClient.createOrder(order, accessToken)
@@ -82,8 +78,6 @@ public class CreateOrderTest extends BaseTest {
     @DisplayName("Создание заказа без ингредиентов")
     @Description("Негативный тест: создание заказа с пустым списком ингредиентов")
     public void createOrderWithoutIngredientsShouldFail() {
-        registerUser();
-
         Order emptyOrder = new Order(Collections.emptyList());
 
         ApiResponse response = orderClient.createOrder(emptyOrder, accessToken)
@@ -97,13 +91,10 @@ public class CreateOrderTest extends BaseTest {
         assertFalse("Response should indicate failure", response.isSuccess());
         assertEquals("Error message should match", Constants.ERROR_NO_INGREDIENTS, response.getMessage());
     }
-
     @Test
     @DisplayName("Создание заказа с неверным хешем ингредиентов")
     @Description("Негативный тест: создание заказа с невалидными ID ингредиентов")
     public void createOrderWithInvalidIngredientHashShouldFail() {
-        registerUser();
-
         Order invalidOrder = new Order(Arrays.asList(Constants.INVALID_INGREDIENT_HASH, "another_invalid_hash"));
 
         orderClient.createOrder(invalidOrder, accessToken)

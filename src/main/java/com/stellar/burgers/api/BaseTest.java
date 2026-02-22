@@ -19,6 +19,14 @@ public class BaseTest {
     public void setUp() {
         String email = "testuser_" + System.currentTimeMillis() + "@example.com";
         testUser = new User(email, "password123", "Test User");
+
+        LoginResponse response = userClient.createUser(testUser)
+                .then()
+                .statusCode(SC_OK)
+                .extract()
+                .as(LoginResponse.class);
+
+        accessToken = response.getAccessToken();
     }
 
     @After
@@ -31,7 +39,7 @@ public class BaseTest {
         }
     }
 
-    @Step("Регистрация пользователя и получение токена")
+    @Step("Регистрация пользователя")
     protected void registerUser() {
         LoginResponse response = userClient.createUser(testUser)
                 .then()

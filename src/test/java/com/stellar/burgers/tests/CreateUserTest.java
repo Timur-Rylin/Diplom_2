@@ -32,17 +32,12 @@ public class CreateUserTest extends BaseTest {
                 .as(LoginResponse.class);
 
         assertNotNull("Access token should not be null", response.getAccessToken());
-        accessToken = response.getAccessToken();
     }
 
     @Test
     @DisplayName("Создание уже зарегистрированного пользователя")
     @Description("Негативный тест: попытка создания пользователя, который уже существует")
     public void createExistingUserShouldFail() {
-        userClient.createUser(testUser)
-                .then()
-                .statusCode(SC_OK);
-
         ApiResponse response = userClient.createUser(testUser)
                 .then()
                 .statusCode(SC_FORBIDDEN)
@@ -93,6 +88,7 @@ public class CreateUserTest extends BaseTest {
     @Description("Негативный тест: создание пользователя без заполнения поля name")
     public void createUserWithoutNameShouldFail() {
         User userWithoutName = new User("test@example.com", "password123", null);
+
         ApiResponse response = userClient.createUser(userWithoutName)
                 .then()
                 .statusCode(SC_FORBIDDEN)

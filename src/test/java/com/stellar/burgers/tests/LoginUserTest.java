@@ -20,10 +20,6 @@ public class LoginUserTest extends BaseTest {
     @DisplayName("Успешный вход существующего пользователя")
     @Description("Позитивный тест: вход с корректными учетными данными")
     public void loginExistingUserSuccessfully() {
-        userClient.createUser(testUser)
-                .then()
-                .statusCode(SC_OK);
-
         LoginResponse response = userClient.loginUser(testUser)
                 .then()
                 .statusCode(SC_OK)
@@ -43,10 +39,6 @@ public class LoginUserTest extends BaseTest {
     @DisplayName("Вход с неверным паролем")
     @Description("Негативный тест: вход с некорректным паролем")
     public void loginWithWrongPasswordShouldFail() {
-        userClient.createUser(testUser)
-                .then()
-                .statusCode(SC_OK);
-
         User userWithWrongPassword = new User(testUser.getEmail(), "wrong_password", testUser.getName());
 
         ApiResponse response = userClient.loginUser(userWithWrongPassword)
@@ -64,10 +56,6 @@ public class LoginUserTest extends BaseTest {
     @DisplayName("Вход с неверным email")
     @Description("Негативный тест: вход с некорректным email")
     public void loginWithWrongEmailShouldFail() {
-        userClient.createUser(testUser)
-                .then()
-                .statusCode(SC_OK);
-
         User userWithWrongEmail = new User("wrong_email@example.com", testUser.getPassword(), testUser.getName());
 
         ApiResponse response = userClient.loginUser(userWithWrongEmail)
